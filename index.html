@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rohlík.cz – Test z češtiny (A1)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --rohlik: #f6a623;
+      --rohlik-dark: #d07e00;
+      --bg: #f4f4f4;
+      --red: #d9534f;
+      --green: #5cb85c;
+    }
+    body { margin:0; font-family: Arial, sans-serif; background: var(--bg); }
+    header { background:#fff; border-bottom:1px solid #e6e6e6; display:flex; align-items:center; justify-content:space-between; padding:10px 20px; gap:20px; position:sticky; top:0; z-index:10; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand img { height:40px; }
+    .title-block small { color:#777; }
+    .timer { display:flex; align-items:center; gap:8px; }
+    .timer-time { background:#fff1dd; border:1px solid rgba(0,0,0,0.05); border-radius:999px; padding:6px 14px; font-weight:bold; color:#5a4500; }
+    .timer button { background:var(--rohlik); border:none; color:#fff; border-radius:999px; width:34px; height:34px; font-weight:bold; cursor:pointer; }
+    .progress-wrap { width:100%; background:#eee; height:6px; margin-top:6px; border-radius:999px; overflow:hidden; }
+    .progress-bar { width:0%; height:6px; background:var(--rohlik); transition:width .2s; }
+    .wrap { max-width:1200px; margin:20px auto; padding:0 20px; display:flex; gap:20px; }
+    .left { flex:1 1 60%; }
+    .right { flex:1 1 40%; background:#fff; border:1px solid #ddd; border-radius:10px; padding:15px 15px 25px; min-height:200px; }
+    .question-box { background:#fff; border:1px solid #e1e1e1; border-radius:10px; margin-bottom:14px; padding:12px 14px 6px; cursor:pointer; transition:box-shadow .15s, border .15s; }
+    .question-box:hover { box-shadow:0 3px 10px rgba(0,0,0,0.04); }
+    .question-box.active { border:1px solid var(--rohlik); background: #fffdf7; }
+    .question-title { font-weight:bold; margin-bottom:6px; color:#333; }
+    .answers label { display:block; margin-bottom:5px; cursor:pointer; }
+    .actions { max-width:1200px; margin:0 auto; padding:10px 20px 20px; display:flex; gap:12px; }
+    .primary-btn { background:var(--rohlik); border:none; color:#fff; border-radius:8px; padding:9px 18px; cursor:pointer; font-weight:bold; }
+    #result { margin-top:12px; font-weight:bold; }
+    .badge { display:inline-block; background:#fff1dd; padding:2px 8px; border-radius:999px; font-size:12px; margin-top:4px; }
+    .small-muted { font-size:12px; color:#888; margin-bottom:10px; }
+    #details { margin-top:10px; background:#fff; border:1px solid #eee; border-radius:8px; padding:10px; display:none; }
+    #details h4 { margin-top:0; }
+    @media (max-width:900px) {
+      .wrap { flex-direction:column; }
+      .left, .right { flex:1 1 100%; }
+      header { flex-wrap:wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">
+        <img src="rohlik-logo.png" alt="Rohlík.cz">
+        <div class="title-block">
+          <div><strong>Rohlík.cz – Test z češtiny (A1)</strong></div>
+          <small id="answeredInfo">Zodpovězeno 0 / 25</small>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </div>
+    <div class="timer">
+      <span id="timer" class="timer-time">45:00</span>
+      <button id="pauseBtn">II</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="left" id="questions"></div>
+    <div class="right">
+      <h3>Text k otázce</h3>
+      <p class="small-muted">Tip: většina úloh má text – klikni na otázku vlevo.</p>
+      <div id="textBox" style="white-space:pre-line; margin-top:8px; color:#333;">Klikni na otázku vlevo a text se zobrazí tady.</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="checkBtn" class="primary-btn">Vyhodnotit test</button>
+    <div id="result"></div>
+  </div>
+  <div id="details"></div>
+
+  <script>
+    const QUESTION_BANK = [
+      {question:"Kdo má narozeniny?",text:"Milá Jano,\n\nzvu Tě na oslavu svých narozenin. Party bude v sobotu 7. 6. od 19:30 u mě doma. Bude tam hodně jídla a přijde i můj bratr Jakub. Zvířata na party nesmí.\n\nTěším se na Tebe.\nTvůj Tomáš",answers:["Jana","Jakub","Tomáš","Kamarád"],correct:"Tomáš"},
+      {question:"Kdy bude party?",text:"Milá Jano,\n\nzvu Tě na oslavu svých narozenin. Party bude v sobotu 7. 6. od 19:30 u mě doma.",answers:["V pátek 6. 6.","V sobotu 7. 6.","V neděli 8. 6.","Ve středu 7. 6."],correct:"V sobotu 7. 6."},
+      {question:"Kdo nesmí na party?",text:"Bude tam hodně jídla a přijde i můj bratr Jakub. Zvířata na party nesmí.",answers:["Děti","Zvířata","Bratr","Kamarádi"],correct:"Zvířata"},
+      {question:"Jak se Tomáš podepsal?",text:"… Těším se na Tebe.\nTvůj Tomáš",answers:["Tvůj Tomáš","S pozdravem Jana","Ahoj Jakube","S láskou maminka"],correct:"Tvůj Tomáš"},
+      {question:"Co znamená „Zítra nepřijdu.“?",answers:["Zítra přijdu pozdě.","Zítra vůbec nepřijdu.","Zítra přijdu dřív.","Zítra budu doma."],correct:"Zítra vůbec nepřijdu."},
+      {question:"Toto je můj ____.",answers:["kamarád","kamarádka","dcera","sestra"],correct:"kamarád"},
+      {question:"Toto je moje ____.",answers:["bratr","kamarádka","syn","děda"],correct:"kamarádka"},
+      {question:"Já ____ z Česka.",answers:["jsem","jsi","je","jste"],correct:"jsem"},
+      {question:"Ona ____ učitelka.",answers:["je","jsem","jsi","jsme"],correct:"je"},
+      {question:"„Kolik je hodin?“ znamená:",answers:["Chci vědět čas.","Jak se jmenuješ?","Jaký je den?","Kde bydlíš?"],correct:"Chci vědět čas."},
+      {question:"Kde bydlíš?",answers:["Bydlím v Praze.","Mám 25 let.","Jsem učitel.","Mám se dobře."],correct:"Bydlím v Praze."},
+      {question:"Která věta je správně?",answers:["Já jsem student.","Já být student.","Já jsi student.","Student já jsem."],correct:"Já jsem student."},
+      {question:"V kolik hodin _______ do práce?",answers:["chodíš","chodím","chodí","chodit"],correct:"chodíš"},
+      {question:"„Dáte si kávu?“ správná odpověď:",answers:["Ano, děkuji.","Je pondělí.","Bydlím v Brně.","Jsem Petr."],correct:"Ano, děkuji."},
+      {question:"Které slovo je jídlo?",answers:["chléb","auto","židle","kniha"],correct:"chléb"},
+      {question:"„Je mi 30 let.“ znamená:",answers:["I am 30 years old.","I am from Prague.","I work here.","I am a driver."],correct:"I am 30 years old."},
+      {question:"Opak slova „levný“ je:",answers:["drahý","pěkný","rychlý","malý"],correct:"drahý"},
+      {question:"Dnes je pondělí, zítra je …",answers:["úterý","sobota","neděle","pátek"],correct:"úterý"},
+      {question:"Jakou barvu má tráva?",answers:["zelenou","modrou","černou","bílou"],correct:"zelenou"},
+      {question:"„Odkud jste?“",answers:["Jsem z Ukrajiny.","Je mi dobře.","Je pondělí.","Bydlím z práce."],correct:"Jsem z Ukrajiny."},
+      {question:"Jak řekneš, že něco nechceš?",answers:["Ne, nechci.","Ano, chci.","Bydlím v Brně.","Je pondělí."],correct:"Ne, nechci."},
+      {question:"„Máte děti?“ znamená:",answers:["Zda máte syna nebo dceru.","Kde bydlíte?","Kolik je hodin?","Kde pracujete?"],correct:"Zda máte syna nebo dceru."},
+      {question:"Který je pozdrav?",answers:["Dobrý den","Dobrý míč","Dobrý autobus","Dobrý čtvrtek"],correct:"Dobrý den"},
+      {question:"„Kde je toaleta?“ – správná odpověď:",answers:["Je vpravo.","Je pondělí.","Jsem Petr.","Bydlím v Praze."],correct:"Je vpravo."},
+      {question:"„Ještě jednou, prosím.“ znamená:",answers:["Řekněte to znovu.","Zaplaťte za mě.","Domů, prosím.","Dám si kávu."],correct:"Řekněte to znovu."},
+      {question:"„Jdu nakupovat.“ znamená:",answers:["Jdu do obchodu.","Jdu spát.","Jdu do školy.","Jdu do práce."],correct:"Jdu do obchodu."},
+      {question:"Toto je můj syn. Toto je moje ____.",answers:["dcera","tatínek","bratr","syn"],correct:"dcera"},
+      {question:"Které slovo patří k bytu?",answers:["koupelna","léto","auto","pondělí"],correct:"koupelna"},
+      {question:"„Prosím pomaleji“ znamená:",answers:["Mluvte pomaleji.","Mluvte rychle.","Nechci jíst.","Kde je toaleta?"],correct:"Mluvte pomaleji."},
+      {question:"V práci jsem od 8 ____ 16 hodin.",answers:["do","na","u","o"],correct:"do"},
+      {question:"Co znamená „promiňte“?",answers:["Omlouvám se.","Jsem unavený.","Chci jíst.","Jsem z Prahy."],correct:"Omlouvám se."}
+    ];
+
+    const QUESTIONS_PER_TEST = 25;
+    const MIN_SCORE = 20;
+
+    function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
+
+    const all = [...QUESTION_BANK];
+    shuffle(all);
+    const selected = all.slice(0, QUESTIONS_PER_TEST);
+
+    const questionsDiv = document.getElementById("questions");
+    const textBox = document.getElementById("textBox");
+    const answeredInfo = document.getElementById("answeredInfo");
+    const progressBar = document.getElementById("progressBar");
+
+    function updateAnswered() {
+      let answered = 0;
+      selected.forEach((q, i) => {
+        const chosen = document.querySelector('input[name="q'+i+'"]:checked');
+        if (chosen) answered++;
+      });
+      answeredInfo.textContent = "Zodpovězeno " + answered + " / " + QUESTIONS_PER_TEST;
+      const pct = (answered / QUESTIONS_PER_TEST) * 100;
+      progressBar.style.width = pct + "%";
+    }
+
+    selected.forEach((q, index) => {
+      const answers = [...q.answers];
+      shuffle(answers);
+      const box = document.createElement("div");
+      box.className = "question-box";
+      box.dataset.index = index;
+      const title = document.createElement("div");
+      title.className = "question-title";
+      title.textContent = "Otázka " + (index+1) + " z " + QUESTIONS_PER_TEST + ": " + q.question;
+      box.appendChild(title);
+      const answersDiv = document.createElement("div");
+      answers.forEach(ans => {
+        const id = "q"+index+"_"+ans;
+        const label = document.createElement("label");
+        label.setAttribute("for", id);
+        label.innerHTML = '<input type="radio" name="q'+index+'" id="'+id+'" value="'+ans+'"> '+ans;
+        answersDiv.appendChild(label);
+      });
+      box.appendChild(answersDiv);
+      questionsDiv.appendChild(box);
+
+      box.addEventListener("click", () => {
+        document.querySelectorAll(".question-box").forEach(b => b.classList.remove("active"));
+        box.classList.add("active");
+        textBox.textContent = q.text ? q.text : "Tato otázka nemá přiložený text.";
+      });
+
+      box.addEventListener("change", updateAnswered);
+    });
+
+    function evaluate() {
+      let score = 0;
+      let wrong = [];
+      selected.forEach((q, index) => {
+        const chosen = document.querySelector('input[name="q'+index+'"]:checked');
+        if (chosen && chosen.value === q.correct) {
+          score++;
+        } else {
+          wrong.push({index:index+1, question:q.question, correct:q.correct});
+        }
+      });
+      const result = document.getElementById("result");
+      const percent = Math.round(score / QUESTIONS_PER_TEST * 100);
+      if (score >= MIN_SCORE) {
+        result.textContent = "Výsledek: " + score + "/" + QUESTIONS_PER_TEST + " (" + percent + " %) – PROŠEL(A).";
+        result.style.color = "green";
+      } else {
+        result.textContent = "Výsledek: " + score + "/" + QUESTIONS_PER_TEST + " (" + percent + " %) – NEPROŠEL(A). Potřebujete alespoň " + MIN_SCORE + " bodů.";
+        result.style.color = "red";
+      }
+      const details = document.getElementById("details");
+      if (wrong.length > 0) {
+        let html = "<h4>Nesprávné / nezodpovězené otázky:</h4><ul>";
+        wrong.forEach(w => {
+          html += "<li>Otázka " + w.index + ": " + w.question + " – správně: <strong>" + w.correct + "</strong></li>";
+        });
+        html += "</ul>";
+        details.innerHTML = html;
+        details.style.display = "block";
+      } else {
+        details.style.display = "none";
+      }
+      evaluated = true;
+    }
+
+    document.getElementById("checkBtn").addEventListener("click", evaluate);
+
+    let timeLeft = 45*60;
+    let paused = false;
+    let evaluated = false;
+    const timerEl = document.getElementById("timer");
+    const pauseBtn = document.getElementById("pauseBtn");
+
+    function updateTimer() {
+      if (!paused && !evaluated) {
+        timeLeft--;
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          if (!evaluated) evaluate();
+        }
+      }
+      const m = Math.floor(timeLeft / 60);
+      const s = timeLeft % 60;
+      timerEl.textContent = (m<10?"0"+m:m)+":"+(s<10?"0"+s:s);
+    }
+    setInterval(updateTimer, 1000);
+
+    pauseBtn.addEventListener("click", () => {
+      paused = !paused;
+      pauseBtn.textContent = paused ? "▶" : "II";
+    });
+  </script>
+</body>
+</html>
