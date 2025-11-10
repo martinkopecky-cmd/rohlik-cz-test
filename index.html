@@ -7,6 +7,33 @@
   <style>
     :root { --rohlik:#f6a623; --bg:#f4f4f4; }
     body { margin:0; font-family:Arial,sans-serif; background:var(--bg); }
+
+    /* login overlay */
+    #loginScreen {
+      position:fixed; inset:0;
+      background:linear-gradient(140deg, #fff6e6 0%, #ffffff 55%, #ffe1aa 100%);
+      display:flex; align-items:center; justify-content:center;
+      z-index:9999;
+    }
+    .login-box {
+      background:#fff; border:1px solid #f0d09f; border-radius:14px;
+      padding:26px 26px 20px; width: min(420px, 90%);
+      box-shadow:0 10px 40px rgba(0,0,0,0.08);
+      text-align:center;
+    }
+    .login-logo { height:50px; margin-bottom:12px; }
+    .login-title { font-size:18px; font-weight:bold; margin-bottom:6px; }
+    .login-sub { color:#666; font-size:13px; margin-bottom:16px; }
+    .login-input {
+      width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:8px;
+      font-size:14px; margin-bottom:12px;
+    }
+    .login-btn {
+      width:100%; background:var(--rohlik); border:none; color:#fff; font-weight:bold;
+      border-radius:8px; padding:9px 0; cursor:pointer; font-size:14px;
+    }
+    .login-error { color:#c62828; font-size:12px; min-height:16px; margin-top:6px; }
+
     header { background:#fff; border-bottom:1px solid #e6e6e6; display:flex; align-items:center; justify-content:space-between; padding:10px 20px; gap:20px; position:sticky; top:0; z-index:10; }
     .brand { display:flex; align-items:center; gap:10px; }
     .brand img { height:40px; }
@@ -35,17 +62,24 @@
   </style>
 </head>
 <body>
-<script>
-  const pass = prompt("Zadejte heslo pro vstup:");
-  if (pass !== "rohlik2025") {
-    document.body.innerHTML = "<div style='font-family:Arial,sans-serif;padding:40px;text-align:center'><h1>Přístup odepřen</h1><p>Špatné heslo.</p></div>";
-  }
-</script>
 
-<header>
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <img src="rohlik-logo.png" alt="Rohlík.cz" class="login-logo" onerror="this.style.display='none'">
+    <div class="login-title">Přístup k testu</div>
+    <div class="login-sub">Zadejte heslo, které jste dostali od koordinátora.</div>
+    <input id="loginInput" type="password" class="login-input" placeholder="Heslo" autocomplete="off" />
+    <button id="loginBtn" class="login-btn">Pokračovat</button>
+    <div id="loginError" class="login-error"></div>
+  </div>
+</div>
+
+<!-- HLAVNÍ APLIKACE -->
+<header id="appHeader" style="display:none;">
   <div>
     <div class="brand">
-      <img src="rohlik-logo.png" alt="Rohlík.cz">
+      <img src="rohlik-logo.png" alt="Rohlík.cz" onerror="this.style.display='none'">
       <div class="title-block">
         <div><strong>Rohlík.cz – Test z češtiny (A1)</strong></div>
         <small id="answeredInfo">Zodpovězeno 0 / 25</small>
@@ -59,23 +93,46 @@
   </div>
 </header>
 
-<div class="wrap">
+<div class="wrap" id="appWrap" style="display:none;">
   <div class="left" id="questions"></div>
 </div>
 
-<div class="text-panel" id="textPanel">
+<div class="text-panel" id="textPanel" style="display:none;">
   <h3>Text k otázce</h3>
   <small>Klikni na otázku vlevo</small>
   <div id="textBox" style="white-space:pre-line; margin-top:6px;"></div>
 </div>
 
-<div class="actions">
+<div class="actions" id="appActions" style="display:none;">
   <button id="checkBtn" class="primary-btn">Vyhodnotit test</button>
   <div id="result"></div>
 </div>
 <div id="details"></div>
 
 <script>
+  const PASSWORD = "rohlik2025";
+
+  const loginScreen = document.getElementById("loginScreen");
+  const loginInput = document.getElementById("loginInput");
+  const loginBtn = document.getElementById("loginBtn");
+  const loginError = document.getElementById("loginError");
+
+  function unlockApp() {
+    const v = loginInput.value.trim();
+    if (v === PASSWORD) {
+      loginScreen.style.display = "none";
+      document.getElementById("appHeader").style.display = "";
+      document.getElementById("appWrap").style.display = "";
+      document.getElementById("textPanel").style.display = "";
+      document.getElementById("appActions").style.display = "";
+    } else {
+      loginError.textContent = "Nesprávné heslo.";
+    }
+  }
+
+  loginBtn.addEventListener("click", unlockApp);
+  loginInput.addEventListener("keydown", e => { if (e.key === "Enter") unlockApp(); });
+
   const QUESTION_BANK = [
     {question:"Kdo má narozeniny?",text:"Milá Jano,\n\nzvu Tě na oslavu svých narozenin. Party bude v sobotu 7. 6. od 19:30 u mě doma. Bude tam hodně jídla a přijde i můj bratr Jakub. Zvířata na party nesmí.\n\nTěším se na Tebe.\nTvůj Tomáš",answers:["Jana","Jakub","Tomáš","Kamarád"],correct:"Tomáš"},
     {question:"Kdy bude party?",text:"Milá Jano,\n\nzvu Tě na oslavu svých narozenin. Party bude v sobotu 7. 6. od 19:30 u mě doma.",answers:["V pátek 6. 6.","V sobotu 7. 6.","V neděli 8. 6.","Ve středu 7. 6."],correct:"V sobotu 7. 6."},
@@ -93,16 +150,12 @@
     {question:"„Dáte si kávu?“ správná odpověď:",answers:["Ano, děkuji.","Je pondělí.","Bydlím v Brně.","Jsem Petr."],correct:"Ano, děkuji."},
     {question:"Které slovo je jídlo?",answers:["chléb","auto","židle","kniha"],correct:"chléb"},
     {question:"„Je mi 30 let.“ znamená:",answers:["I am 30 years old.","I am from Prague.","I work here.","I am a driver."],correct:"I am 30 years old."},
-    {question:"Opak slova „levný“ je:",answers:["drahý","pěkný","rychlý","malý"],correct:"drahý"},
     {question:"Dnes je pondělí, zítra je …",answers:["úterý","sobota","neděle","pátek"],correct:"úterý"},
     {question:"Jakou barvu má tráva?",answers:["zelenou","modrou","černou","bílou"],correct:"zelenou"},
     {question:"„Odkud jste?“",answers:["Jsem z Ukrajiny.","Je mi dobře.","Je pondělí.","Bydlím z práce."],correct:"Jsem z Ukrajiny."},
-    {question:"Jak řekneš, že něco nechceš?",answers:["Ne, nechci.","Ano, chci.","Bydlím v Brně.","Je pondělí."],correct:"Ne, nechci."},
     {question:"„Máte děti?“ znamená:",answers:["Zda máte syna nebo dceru.","Kde bydlíte?","Kolik je hodin?","Kde pracujete?"],correct:"Zda máte syna nebo dceru."},
-    {question:"Který je pozdrav?",answers:["Dobrý den","Dobrý míč","Dobrý autobus","Dobrý čtvrtek"],correct:"Dobrý den"},
-    {question:"„Kde je toaleta?“ – správná odpověď:",answers:["Je vpravo.","Je pondělí.","Jsem Petr.","Bydlím v Praze."],correct:"Je vpravo."},
     {question:"„Ještě jednou, prosím.“ znamená:",answers:["Řekněte to znovu.","Zaplaťte za mě.","Domů, prosím.","Dám si kávu."],correct:"Řekněte to znovu."},
-    {question:"„Jdu nakupovat.“ znamená:",answers:["Jdu do obchodu.","Jdu spát.","Jdu do školy.","Jdu do práce."],correct:"Jdu do obchodu."}
+    {question:"„Kde je toaleta?“ – správná odpověď:",answers:["Je vpravo.","Je pondělí.","Jsem Petr.","Bydlím v Praze."],correct:"Je vpravo."}
   ];
 
   const QUESTIONS_PER_TEST = 25;
@@ -218,5 +271,6 @@
     pauseBtn.textContent = paused ? "▶" : "II";
   });
 </script>
+
 </body>
 </html>
